@@ -1,9 +1,16 @@
-# -*- coding: utf-8 -*-
-# /usr/bin/python
 '''
 By kyubyong park(kbpark.linguist@gmail.com) and Jongseok Kim(https://github.com/ozmig77)
 https://www.github.com/kyubyong/g2p
 '''
+
+import codecs
+import json
+import os
+import re
+import unicodedata
+from builtins import str as unicode
+
+import numpy as np
 from nltk import pos_tag
 from nltk.corpus import cmudict
 from nltk.corpus.reader import CMUDictCorpusReader
@@ -12,23 +19,19 @@ from nltk.downloader import Downloader
 from nltk.tag.mapping import map_tag
 from nltk.tag.perceptron import PerceptronTagger
 from nltk.tokenize import TweetTokenizer
-word_tokenize = TweetTokenizer().tokenize
-import numpy as np
-import codecs
-import json
-import re
-import os
-import unicodedata
-from builtins import str as unicode
+
 from .expand import normalize_numbers
 
+word_tokenize = TweetTokenizer().tokenize
 dirname = os.path.dirname(__file__)
+
 
 def construct_homograph_dictionary():
     f = os.path.join(dirname,'homographs.en')
     homograph2features = dict()
     for line in codecs.open(f, 'r', 'utf8').read().splitlines():
-        if line.startswith("#"): continue # comment
+        if line.startswith("#"):
+            continue # comment
         headword, pron1, pron2, pos1 = line.strip().split("|")
         homograph2features[headword.lower()] = (pron1.split(), pron2.split(), pos1)
     return homograph2features
@@ -161,7 +164,8 @@ class G2p:
             h = self.grucell(dec, h, self.dec_w_ih, self.dec_w_hh, self.dec_b_ih, self.dec_b_hh)  # (b, h)
             logits = np.matmul(h, self.fc_w.T) + self.fc_b
             pred = logits.argmax()
-            if pred == 3: break  # 3: </s>
+            if pred == 3:
+                break  # 3: </s>
             preds.append(pred)
             dec = np.take(self.dec_emb, [pred], axis=0)
 
@@ -197,7 +201,7 @@ class G2p:
                     pron = pron2
             elif word in self.cmu:  # lookup CMU dict
                 pron = self.cmu[word][0]
-            else: # predict for oov
+            else:  # predict for oov
                 pron = self.predict(word)
 
             prons.extend(pron)
@@ -238,4 +242,3 @@ if __name__ == '__main__':
     for text in texts:
         out = g2p(text)
         print(out)
-

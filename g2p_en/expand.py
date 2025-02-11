@@ -1,16 +1,12 @@
-# -*- coding: utf-8 -*-
-#/usr/bin/python2
 '''
 Borrowed
 from https://github.com/keithito/tacotron/blob/master/text/numbers.py
 By kyubyong park. kbpark.linguist@gmail.com.
 https://www.github.com/kyubyong/g2p
 '''
-from __future__ import print_function
-import inflect
 import re
 
-
+import inflect
 
 _inflect = inflect.engine()
 _comma_number_re = re.compile(r'([0-9][0-9\,]+[0-9])')
