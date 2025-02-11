@@ -11,7 +11,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
   name = 'g2p_en',
-  packages = ['g2p_en'], # this must be the same as the name above
+  packages = ['g2p_en', "g2p_en.__pyinstaller"], # this must be the same as the name above
   version = '2.0.0',
   description = 'A Simple Python Module for English Grapheme To Phoneme Conversion',
   long_description=long_description,
