@@ -25,7 +25,6 @@ setup(
     'numpy>=1.13.1',
     'nltk>=3.9',
     'inflect>=0.3.1',
-    'distance>=0.1.3',
   ],
   license='Apache Software License',
   include_package_data=True
