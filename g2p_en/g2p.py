@@ -6,25 +6,21 @@ https://www.github.com/kyubyong/g2p
 '''
 from nltk import pos_tag
 from nltk.corpus import cmudict
-import nltk
+from nltk.corpus.reader import CMUDictCorpusReader
+from nltk.data import find
+from nltk.downloader import Downloader
+from nltk.tag.mapping import map_tag
+from nltk.tag.perceptron import PerceptronTagger
 from nltk.tokenize import TweetTokenizer
 word_tokenize = TweetTokenizer().tokenize
 import numpy as np
 import codecs
+import json
 import re
 import os
 import unicodedata
 from builtins import str as unicode
 from .expand import normalize_numbers
-
-try:
-    nltk.data.find('taggers/averaged_perceptron_tagger.zip')
-except LookupError:
-    nltk.download('averaged_perceptron_tagger')
-try:
-    nltk.data.find('corpora/cmudict.zip')
-except LookupError:
-    nltk.download('cmudict')
 
 dirname = os.path.dirname(__file__)
 
@@ -48,8 +44,8 @@ def construct_homograph_dictionary():
 #     print(text)
 #     return text.split()
 
-class G2p(object):
-    def __init__(self):
+class G2p:
+    def __init__(self, nltk_dir=None):
         super().__init__()
         self.graphemes = ["<pad>", "<unk>", "</s>"] + list("abcdefghijklmnopqrstuvwxyz")
         self.phonemes = ["<pad>", "<unk>", "<s>", "</s>"] + ['AA0', 'AA1', 'AA2', 'AE0', 'AE1', 'AE2', 'AH0', 'AH1', 'AH2', 'AO0',
@@ -67,7 +63,34 @@ class G2p(object):
         self.p2idx = {p: idx for idx, p in enumerate(self.phonemes)}
         self.idx2p = {idx: p for idx, p in enumerate(self.phonemes)}
 
-        self.cmu = cmudict.dict()
+        if nltk_dir is not None:
+            if not os.path.isdir(nltk_dir):
+                raise FileNotFoundError("nltk_dir is not dir")
+            cmudict_root = find_data("cmudict", nltk_dir)
+            self.cmu = CMUDictCorpusReader(cmudict_root, "cmudict").dict()
+            loc = find_data("averaged_perceptron_tagger_eng", nltk_dir)
+            weights_file = loc.join("averaged_perceptron_tagger_eng.weights.json")
+            with weights_file.open() as f:
+                weights = json.load(f)
+            tagdict_file = loc.join("averaged_perceptron_tagger_eng.tagdict.json")
+            with tagdict_file.open() as f:
+                tagdict = json.load(f)
+            classes_file = loc.join("averaged_perceptron_tagger_eng.classes.json")
+            with classes_file.open() as f:
+                classes = json.load(f)
+            tagger = PerceptronTagger.decode_json_obj((weights, tagdict, classes))
+
+            def _pos_tag(tokens, tagset=None):
+                tagged_tokens = tagger.tag(tokens)
+                return [
+                    (token, map_tag("en-ptb", tagset, tag))
+                    for (token, tag) in tagged_tokens
+                ]
+
+            self._pos_tag = _pos_tag
+        else:
+            self.cmu = cmudict.dict()
+            self._pos_tag = pos_tag
         self.load_variables()
         self.homograph2features = construct_homograph_dictionary()
 
@@ -158,7 +181,7 @@ class G2p(object):
 
         # tokenization
         words = word_tokenize(text)
-        tokens = pos_tag(words)  # tuples of (word, tag)
+        tokens = self._pos_tag(words)  # tuples of (word, tag)
 
         # steps
         prons = []
@@ -181,6 +204,30 @@ class G2p(object):
             prons.extend([" "])
 
         return prons[:-1]
+
+
+def find_data(resource_id, download_dir=None):
+    if resource_id == "averaged_perceptron_tagger_eng":
+        resource_name = "taggers/averaged_perceptron_tagger_eng"
+    elif resource_id == "cmudict":
+        resource_name = "corpora/cmudict"
+    else:
+        raise RuntimeError("unused resource_id")
+    paths = None if download_dir is None else [download_dir]
+    return find(resource_name, paths)
+
+
+def download_data(download_dir=None):
+    downloader = Downloader(download_dir=download_dir)
+    try:
+        find_data("averaged_perceptron_tagger_eng", download_dir)
+    except LookupError:
+        downloader.download("averaged_perceptron_tagger_eng")
+    try:
+        find_data("cmudict", download_dir)
+    except LookupError:
+        downloader.download("cmudict")
+
 
 if __name__ == '__main__':
     texts = ["I have $250 in my pocket.", # number -> spell-out
