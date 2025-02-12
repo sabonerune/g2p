@@ -20,8 +20,6 @@ from nltk.tag.mapping import map_tag
 from nltk.tag.perceptron import PerceptronTagger
 from nltk.tokenize import TweetTokenizer
 
-from .expand import normalize_numbers
-
 word_tokenize = TweetTokenizer().tokenize
 dirname = os.path.dirname(__file__)
 
@@ -173,6 +171,9 @@ class G2p:
         return preds
 
     def __call__(self, text):
+        # Workaround for slow inflect import issue
+        from .expand import normalize_numbers
+
         # preprocessing
         text = unicode(text)
         text = normalize_numbers(text)
